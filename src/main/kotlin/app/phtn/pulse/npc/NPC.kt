@@ -48,6 +48,7 @@ class NPC(instance: InstanceContainer, position: Pos) : EntityCreature(EntityTyp
             PlayerEntityInteractEvent::class.java
         ) { event: PlayerEntityInteractEvent ->
             if (event.target == this) {
+                event.instance.sendMessage(Component.text("${Emoji.Skull} No ballz").color(NamedTextColor.RED))
                 if (event.hand == Player.Hand.MAIN) {
                     callback(event.player)
                 }

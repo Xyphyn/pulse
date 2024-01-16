@@ -83,7 +83,7 @@ class GunGame(
 
         players.forEach {
             it.inventory.setItemStack(0, GunProgression.entries.first().weapon.item)
-            spawnProtection[it.uuid] = System.currentTimeMillis() + (5 * 1000)
+            spawnProtection[it.uuid] = System.currentTimeMillis() + (0 * 1000)
         }
 
         instance.eventNode().addListener(PlayerUseItemEvent::class.java) { it ->
@@ -208,7 +208,7 @@ class GunGame(
             var schedule: Task? = null
 
             schedule = instance.scheduler().buildTask {
-                if (timer == 0) {
+                if (timer >= 0) {
                     respawn(p)
                     schedule?.cancel()
                 }
@@ -401,7 +401,7 @@ sealed class Weapon(val name: String, val level: Int) {
                 Particle.DUST.id(), false,
                 direction.x, direction.y, direction.z,
                 0f, 0f, 0f,
-                0.0f, 50, byteBuffer.array()
+                0.0f, 500, byteBuffer.array()
             )
 
             instance.sendGroupedPacket(
@@ -476,11 +476,11 @@ sealed class Weapon(val name: String, val level: Int) {
 
 
 data object BBGun : Weapon("BB Gun", 0) {
-    override val cooldown: Long = 500
-    override val damage: Float = 1.0f
+    override val cooldown: Long = 1
+    override val damage: Float = 3f
     override val ammo: Int = 32
     override val material: Material = Material.WOODEN_HOE
-    override val bullets: Int = 1
+    override val bullets: Int = 100
     override val spread: Double = 0.0
     override val maxDistance: Double = 50.0
     override val burstAmount: Int = 1
@@ -488,11 +488,11 @@ data object BBGun : Weapon("BB Gun", 0) {
 }
 
 data object Pistol : Weapon("Pistol", 1) {
-    override val cooldown: Long = 250
-    override val damage: Float = 1.5f
+    override val cooldown: Long = 1
+    override val damage: Float = 3f
     override val ammo: Int = 10
     override val material: Material = Material.STONE_HOE
-    override val bullets: Int = 1
+    override val bullets: Int = 100
     override val spread: Double = 0.0
     override val maxDistance: Double = 100.0
     override val burstAmount: Int = 1
@@ -500,11 +500,11 @@ data object Pistol : Weapon("Pistol", 1) {
 }
 
 data object Rifle : Weapon("Rifle", 2) {
-    override val cooldown: Long = 250
-    override val damage: Float = 2.5f
+    override val cooldown: Long = 1
+    override val damage: Float = 3f
     override val ammo: Int = 10
     override val material: Material = Material.DIAMOND_PICKAXE
-    override val bullets: Int = 1
+    override val bullets: Int = 100
     override val spread: Double = 0.0
     override val maxDistance: Double = 150.0
     override val burstAmount: Int = 1
@@ -512,11 +512,11 @@ data object Rifle : Weapon("Rifle", 2) {
 }
 
 data object SMG : Weapon("SMG", 3) {
-    override val cooldown: Long = 100
-    override val damage: Float = 0.5f
+    override val cooldown: Long = 1
+    override val damage: Float = 1f
     override val ammo: Int = 200
     override val material: Material = Material.GOLDEN_SHOVEL
-    override val bullets: Int = 1
+    override val bullets: Int = 100
     override val spread: Double = 0.1
     override val maxDistance: Double = 100.0
     override val burstAmount: Int = 4
@@ -528,7 +528,7 @@ data object Shotgun : Weapon("Shotgun", 4) {
     override val damage: Float = 1f
     override val ammo: Int = 200
     override val material: Material = Material.DIAMOND_HOE
-    override val bullets: Int = 5
+    override val bullets: Int = 500
     override val spread: Double = 0.2
     override val maxDistance: Double = 50.0
     override val burstAmount: Int = 1
