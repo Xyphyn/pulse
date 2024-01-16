@@ -2,12 +2,17 @@ package app.phtn.pulse.game
 
 import app.phtn.pulse.Main
 import app.phtn.pulse.game.event.PlayerEliminateEvent
+import app.phtn.pulse.enums.Emoji
+import app.phtn.pulse.enums.ding
 import app.phtn.pulse.uuidsToPlayers
 import app.phtn.pulse.vanilla.VanillaExplosion
+import net.kyori.adventure.key.Key
+import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.MinecraftServer
+import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.GameMode
@@ -15,15 +20,13 @@ import net.minestom.server.entity.Player
 import net.minestom.server.event.instance.AddEntityToInstanceEvent
 import net.minestom.server.event.item.ItemDropEvent
 import net.minestom.server.event.player.PlayerBlockBreakEvent
-import net.minestom.server.event.player.PlayerBlockInteractEvent
+import net.minestom.server.event.player.PlayerBlockPlaceEvent
 import net.minestom.server.event.player.PlayerMoveEvent
 import net.minestom.server.event.player.PlayerUseItemEvent
 import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.instance.block.Block
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
-import net.minestom.server.potion.Potion
-import net.minestom.server.potion.PotionEffect
 import net.minestom.server.tag.Tag
 import net.minestom.server.utils.time.TimeUnit
 import java.util.UUID
@@ -33,15 +36,23 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
     override val spectators: MutableSet<UUID> = mutableSetOf()
     override val gameMode: GameMode = GameMode.SURVIVAL
 
-    val powerupTimer = MinecraftServer.getSchedulerManager().buildTask {
+    private var gameRunning = true
+
+    private val powerupTimer = MinecraftServer.getSchedulerManager().buildTask {
         val players = uuidsToPlayers(players.toList())
+        instance.sendMessage(
+            Component.text("${Emoji.Info} Everybody has received a powerup!")
+                .color(NamedTextColor.AQUA)
+        )
         players.forEach { p ->
             val powerup = Powerup.entries.random()
             p.inventory.addItemStack(powerup.itemStack)
+            p.playSound(Sound.sound(Key.key(ding), Sound.Source.MASTER, 1f, 1f))
         }
-    }.repeat(5, TimeUnit.SECOND).schedule()
+    }.repeat(30, TimeUnit.SECOND).schedule()
 
-    val lava = 10
+    private val lava = 10
+    private val maxBuildHeight = 30
 
     init {
         instance.setGenerator {
@@ -94,15 +105,35 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
         instance.eventNode().addListener(PlayerEliminateEvent::class.java) {
             e ->
             run {
+                if (!gameRunning) return@addListener
+
                 players.remove(e.player.uuid)
                 spectators.add(e.player.uuid)
                 e.player.gameMode = GameMode.SPECTATOR
 
+
                 if (players.size <= 1) {
-                    uuidsToPlayers(players.toList()).forEach {
+                    val players = uuidsToPlayers(players.toList())
+                    val spectators = uuidsToPlayers(spectators.toList())
+
+                    gameRunning = false
+
+                    if (players.size == 1) {
+                        instance.sendMessage(
+                            Component.textOfChildren(
+                                players[0].name
+                                    .color(NamedTextColor.GOLD)
+                                    .decorate(TextDecoration.BOLD),
+                                Component.text(" wins!")
+                                    .color(NamedTextColor.GOLD)
+                            )
+                        )
+                    }
+
+                    players.forEach {
                         victory(it, true)
                     }
-                    uuidsToPlayers(spectators.toList()).forEach {
+                    spectators.forEach {
                         victory(it, false)
                     }
                 }
@@ -115,9 +146,16 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
         }
 
         instance.eventNode().addListener(PlayerUseItemEvent::class.java) {
+            if (!it.player.itemInMainHand.hasTag(Tag.String("tag"))) return@addListener
+
             val powerup = Powerup.fromTag(it.player.itemInMainHand.getTag(Tag.String("tag"))) ?: return@addListener
             powerup.act(it.player, instance)
-            it.player.itemInMainHand = it.player.itemInMainHand.consume(1)
+            if (powerup.consume)
+                it.player.itemInMainHand = it.player.itemInMainHand.consume(1)
+        }
+
+        instance.eventNode().addListener(PlayerBlockPlaceEvent::class.java) {
+            if (it.blockPosition.y() > maxBuildHeight) it.isCancelled = true
         }
     }
 
@@ -128,11 +166,12 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
     }
 }
 
-enum class Powerup(val act: (Player, InstanceContainer) -> Unit, val itemStack: ItemStack, val tag: String) {
+enum class Powerup(val act: (Player, InstanceContainer) -> Unit, val itemStack: ItemStack, val tag: String, val consume: Boolean = true) {
     Railgun(
         { p, i ->
             val target = p.getTargetBlockPosition(100)
-            VanillaExplosion.builder(target, 2.0f).build().trigger(i)
+            if (target is Point)
+                VanillaExplosion.builder(target, 2.0f).build().trigger(i)
         },
         ItemStack.of(Material.GOLDEN_HOE)
             .withDisplayName(
@@ -143,8 +182,8 @@ enum class Powerup(val act: (Player, InstanceContainer) -> Unit, val itemStack: 
             ).withTag(Tag.String("tag"), "railgun"),
         "railgun"
     ),
-    Boost({ p, i ->
-        p.velocity = Vec(p.velocity.x, 10.0, p.velocity.z)
+    Boost({ p, _ ->
+        p.velocity = Vec(p.velocity.x, 25.0, p.velocity.z)
     },
         ItemStack.of(Material.RABBIT_FOOT)
             .withDisplayName(
@@ -154,6 +193,9 @@ enum class Powerup(val act: (Player, InstanceContainer) -> Unit, val itemStack: 
                     .decorate(TextDecoration.BOLD)
             ).withTag(Tag.String("tag"), "boost"),
         "boost"),
+    Blocks({ _, _ -> },
+        ItemStack.of(Material.SNOW_BLOCK).withAmount(5).withTag(Tag.String("tag"), "blocks"),
+        "blocks"),
     ;
     companion object {
         fun fromTag(tag: String): Powerup? {

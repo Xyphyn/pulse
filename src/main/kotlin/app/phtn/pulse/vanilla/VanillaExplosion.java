@@ -3,6 +3,7 @@ package app.phtn.pulse.vanilla;
 import dev.emortal.rayfast.area.Intersection;
 import dev.emortal.rayfast.area.area3d.Area3d;
 import dev.emortal.rayfast.casting.grid.GridCast;
+import dev.emortal.rayfast.util.Intersection3dUtils;
 import dev.emortal.rayfast.vector.Vector3d;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Point;
@@ -242,7 +243,7 @@ public class VanillaExplosion extends Explosion {
 
                     // TODO: Check for distance
                     Vector3d intersection = area3d.lineIntersection(getCenterX(), getCenterY(), getCenterZ(),
-                            deltaX, deltaY, deltaZ, Intersection.ANY.cast());
+                            deltaX, deltaY, deltaZ, Intersection.ANY_3D).intersection();
 
                     if (intersection != null) {
                         hits++;

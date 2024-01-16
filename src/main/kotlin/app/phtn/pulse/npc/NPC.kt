@@ -25,7 +25,8 @@ class NPC(instance: InstanceContainer, position: Pos) : EntityCreature(EntityTyp
 
         this.nameTag = Entity(EntityType.TEXT_DISPLAY)
         val meta = nameTag.getEntityMeta() as TextDisplayMeta
-        meta.billboardRenderConstraints = AbstractDisplayMeta.BillboardConstraints.CENTER
+        meta.billboardRenderConstraints = AbstractDisplayMeta.BillboardConstraints.VERTICAL
+        meta.translation = Pos(0.0, this.eyeHeight + 0.5, 0.0)
 
         if (this.customName != null) {
             meta.text = this.customName!!

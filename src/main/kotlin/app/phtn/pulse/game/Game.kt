@@ -2,12 +2,14 @@ package app.phtn.pulse.game
 
 import app.phtn.pulse.Main
 import app.phtn.pulse.instance.Lobby
+import app.phtn.pulse.uuidsToPlayers
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.title.Title
 import net.kyori.adventure.title.TitlePart
 import net.minestom.server.MinecraftServer
+import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.Player
 import net.minestom.server.instance.InstanceContainer
@@ -49,5 +51,12 @@ interface Game {
         MinecraftServer.getSchedulerManager().buildTask {
             endGame()
         }.delay(5, TimeUnit.SECOND).schedule()
+    }
+
+    fun transferPlayers(pos: Pos) {
+        uuidsToPlayers(players.toList()).forEach {
+            p ->
+            p.setInstance(instance, pos)
+        }
     }
 }

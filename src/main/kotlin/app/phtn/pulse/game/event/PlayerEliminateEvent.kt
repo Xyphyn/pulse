@@ -6,7 +6,7 @@ import net.minestom.server.event.trait.InstanceEvent
 import net.minestom.server.event.trait.PlayerEvent
 import net.minestom.server.instance.Instance
 
-class PlayerEliminateEvent(private val player: Player) : InstanceEvent, PlayerEvent {
+class PlayerEliminateEvent(private val player: Player, val eliminator: Player? = null) : InstanceEvent, PlayerEvent {
     override fun getInstance(): Instance {
         return player.instance
     }

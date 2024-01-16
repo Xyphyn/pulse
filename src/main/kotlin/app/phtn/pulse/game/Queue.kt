@@ -1,6 +1,10 @@
 package app.phtn.pulse.game
 
+import app.phtn.pulse.enums.bit
+import app.phtn.pulse.enums.ding
 import app.phtn.pulse.uuidsToPlayers
+import net.kyori.adventure.key.Key
+import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextColor
@@ -9,22 +13,30 @@ import net.minestom.server.MinecraftServer
 import net.minestom.server.command.builder.Command
 import net.minestom.server.command.builder.arguments.ArgumentType
 import net.minestom.server.entity.Player
+import net.minestom.server.timer.Task
 import net.minestom.server.timer.TaskSchedule
 import net.minestom.server.utils.NamespaceID
+import net.minestom.server.utils.time.TimeUnit
 import net.minestom.server.world.DimensionType
 import java.time.Duration
 import java.util.*
 
 
-class Queue(val type: QueueType, val players: MutableSet<UUID>, var timer: Int = 10) {
-    var state: State = State.Waiting
+class Queue(private val type: QueueType, private val players: MutableSet<UUID>, private var timer: Int = 10) {
+    private var queueTimer: Task? = null
+
+    private val state: State
         get() =
             if (this.players.size < this.type.min) State.Waiting
             else if (this.players.size <= this.type.max) State.Ready
             else State.Starting
 
+    private fun inQueue(uuid: UUID): Boolean {
+        return players.contains(uuid)
+    }
 
     fun addPlayer(uuid: UUID) {
+        if (inQueue(uuid)) return
         players.add(uuid)
         checkState()
     }
@@ -34,7 +46,7 @@ class Queue(val type: QueueType, val players: MutableSet<UUID>, var timer: Int =
         checkState()
     }
 
-    fun checkState() {
+    private fun checkState() {
         when (state) {
             State.Ready -> timer()
             else -> {  }
@@ -42,19 +54,23 @@ class Queue(val type: QueueType, val players: MutableSet<UUID>, var timer: Int =
     }
 
     private fun timer() {
-        val joiners = uuidsToPlayers(players.toList())
-
-        MinecraftServer.getSchedulerManager().submitTask {
+        if (queueTimer != null) return
+        queueTimer = MinecraftServer.getSchedulerManager().buildTask {
             if (this.timer == 0) {
                 timer = 10
                 type.instantiate(players.toMutableSet())
                 players.clear()
 
-                return@submitTask TaskSchedule.stop()
+                queueTimer?.cancel()
+                QueueManager.queue.remove(type)
+                return@buildTask
             } else {
                 if (state != State.Ready) {
                     TaskSchedule.stop()
                     timer = 10
+
+                    queueTimer?.cancel()
+                    return@buildTask
                 }
 
                 val color: TextColor = when (this.timer) {
@@ -64,17 +80,23 @@ class Queue(val type: QueueType, val players: MutableSet<UUID>, var timer: Int =
                     else -> NamedTextColor.GREEN
                 }
 
-                joiners.forEach {
+                uuidsToPlayers(players.toList()).forEach {
+                    if (timer == 10) {
+                        it.playSound(Sound.sound(Key.key(ding), Sound.Source.MASTER, 1f, 1f))
+                    }
+
+                    if (timer <= 3) {
+                        it.playSound(Sound.sound(Key.key(bit), Sound.Source.MASTER, 1f, 1f))
+                    }
+
                     it.sendActionBar(Component.text("Joining in ")
                         .color(NamedTextColor.AQUA)
                         .append(Component.text("$timer").color(color).decorate(TextDecoration.BOLD))
                     )
                 }
                 timer--
-
-                return@submitTask TaskSchedule.duration(Duration.ofSeconds(1))
             }
-        }
+        }.repeat(1, TimeUnit.SECOND).schedule()
 
     }
 }
@@ -96,7 +118,7 @@ object QueueManager {
         queue.addPlayer(player.uuid)
     }
 
-    fun removePlayer(player: Player) {
+    private fun removePlayer(player: Player) {
         queue.values.forEach {
             q ->
             q.removePlayer(player.uuid)
@@ -105,7 +127,8 @@ object QueueManager {
 }
 
 enum class QueueType(val min: Int, val max: Int, val instantiate: (MutableSet<UUID>) -> Game) {
-    SPLEEF(2, 16, ::Spleef);
+    SPLEEF(2, 16, ::Spleef),
+    GUNGAME(2, 16, ::GunGame);
     companion object {
         fun nameToType(name: String): QueueType? {
             return try {
