@@ -22,7 +22,7 @@ import java.time.Duration
 import java.util.*
 
 
-class Queue(private val type: QueueType, private val players: MutableSet<UUID>, private var timer: Int = 10) {
+class Queue(private val type: QueueType, val players: MutableSet<UUID>, private var timer: Int = 10) {
     private var queueTimer: Task? = null
 
     private val state: State
@@ -30,6 +30,7 @@ class Queue(private val type: QueueType, private val players: MutableSet<UUID>, 
             if (this.players.size < this.type.min) State.Waiting
             else if (this.players.size <= this.type.max) State.Ready
             else State.Starting
+
 
     private fun inQueue(uuid: UUID): Boolean {
         return players.contains(uuid)
@@ -49,7 +50,11 @@ class Queue(private val type: QueueType, private val players: MutableSet<UUID>, 
     private fun checkState() {
         when (state) {
             State.Ready -> timer()
-            else -> {  }
+            else -> {
+                queueTimer?.cancel()
+                timer = 10
+                queueTimer = null
+            }
         }
     }
 
@@ -121,7 +126,8 @@ object QueueManager {
     private fun removePlayer(player: Player) {
         queue.values.forEach {
             q ->
-            q.removePlayer(player.uuid)
+            if (q.players.contains(player.uuid))
+                q.removePlayer(player.uuid)
         }
     }
 }

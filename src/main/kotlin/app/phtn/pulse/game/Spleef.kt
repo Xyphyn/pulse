@@ -27,7 +27,9 @@ import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.instance.block.Block
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
+import net.minestom.server.network.packet.server.play.BlockBreakAnimationPacket
 import net.minestom.server.tag.Tag
+import net.minestom.server.timer.Task
 import net.minestom.server.utils.time.TimeUnit
 import java.util.UUID
 
@@ -51,6 +53,53 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
         }
     }.repeat(30, TimeUnit.SECOND).schedule()
 
+    private var destroyLayer = 4
+
+    private val layerDestroyer = MinecraftServer.getSchedulerManager().buildTask {
+        val players = uuidsToPlayers(players.toList())
+        instance.sendMessage(
+            Component.text("${Emoji.Warning} A layer is being destroyed...")
+                .color(NamedTextColor.GOLD)
+        )
+
+        var destroyProgress = 8
+
+        var task: Task? = null
+
+        task = MinecraftServer.getSchedulerManager().buildTask {
+            if (destroyProgress == 0) {
+                for (x in -20..20) {
+                    for (z in -20..20) {
+                        instance.setBlock(
+                            Pos(x.toDouble(), (destroyLayer.toDouble() * 5) + 10, z.toDouble()),
+                            Block.AIR
+                        )
+                    }
+                }
+                destroyLayer--
+                task?.cancel()
+            } else {
+                for (x in -20..20) {
+                    for (z in -20..20) {
+                        println("sending break packet at")
+                        println(Pos(x.toDouble(), (destroyLayer.toDouble() * 5) + 10, z.toDouble()))
+                        players.forEach {
+                            p ->
+                            p.sendPacket(BlockBreakAnimationPacket(
+                                0,
+                                Pos(x.toDouble(), (destroyLayer.toDouble() * 5) + 10, z.toDouble()),
+                                5
+                            ))
+                        }
+                    }
+                }
+            }
+
+            destroyProgress -= 1
+        }.repeat(1, TimeUnit.SECOND).schedule()
+
+    }.repeat(90, TimeUnit.SECOND).schedule()
+
     private val lava = 10
     private val maxBuildHeight = 30
 
@@ -62,10 +111,10 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
 
         instance.timeRate = 0
 
-        for (y in 2..6) {
+        for (y in 0..3) {
             for (x in -20..20) {
                 for (z in -20..20) {
-                    instance.setBlock(x, y * 5, z, Block.SNOW_BLOCK)
+                    instance.setBlock(x, (y * 5) + 10, z, Block.SNOW_BLOCK)
                 }
             }
         }
@@ -163,6 +212,7 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
         super.endGame()
 
         powerupTimer.cancel()
+        layerDestroyer.cancel()
     }
 }
 
