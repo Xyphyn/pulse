@@ -45,8 +45,8 @@ fun main() {
             e ->
             Component.textOfChildren(
                 e.player.name.color(NamedTextColor.AQUA),
-                Component.text(" > ").color(NamedTextColor.DARK_GRAY),
-                Component.text(e.message).color(NamedTextColor.WHITE)
+                Component.text(" > f you > ").color(NamedTextColor.DARK_GRAY),
+                Component.text(e.message + "nuh nuh").color(NamedTextColor.WHITE)
             )
         }
     }
@@ -58,7 +58,7 @@ fun main() {
     Main.eventHandler.addListener(ServerListPingEvent::class.java) {
         it.responseData.description = Component.textOfChildren(
             Component.text("ᴘᴜʟsᴇ ").color(Color.Brand.color),
-            Component.text("                                                   ")
+            Component.text("                      deez                         ")
                 .color(NamedTextColor.DARK_GRAY)
                 .decorate(TextDecoration.STRIKETHROUGH),
 
@@ -79,7 +79,7 @@ object Main {
     val instanceManager = MinecraftServer.getInstanceManager()
     val default: DimensionType = DimensionType.builder(
         NamespaceID.from("pulse:lobby")
-    ).ambientLight(1.0f).build()
+    ).ambientLight(0.2f).build()
     val eventHandler: GlobalEventHandler = MinecraftServer.getGlobalEventHandler()
     val connections = MinecraftServer.getConnectionManager()
     val lobby = Lobby.init()
