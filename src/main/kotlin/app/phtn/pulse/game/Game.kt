@@ -2,6 +2,7 @@ package app.phtn.pulse.game
 
 import app.phtn.pulse.Main
 import app.phtn.pulse.instance.Lobby
+import app.phtn.pulse.uuidToPlayer
 import app.phtn.pulse.uuidsToPlayers
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -26,14 +27,14 @@ interface Game {
     fun endGame() {
         players.mapNotNull {
                 p ->
-            Main.connections.getPlayer(p)
+            uuidToPlayer(p)
         }.forEach {
                 p ->
             p.setInstance(Main.lobby, Lobby.spawn)
         }
         spectators.mapNotNull {
                 p ->
-            Main.connections.getPlayer(p)
+            uuidToPlayer(p)
         }.forEach {
                 p ->
             p.setInstance(Main.lobby, Lobby.spawn)

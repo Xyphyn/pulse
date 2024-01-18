@@ -46,7 +46,7 @@ object Raycast {
             try {
                 val hitBlock = instance.getBlock(pos)
 
-                if (!(hitBlock.isAir || hitBlock.isLiquid)) return pos
+                if (hitBlock.isSolid) return pos
             } catch (e: NullPointerException) {
                 // catch if chunk is not loaded
                 break

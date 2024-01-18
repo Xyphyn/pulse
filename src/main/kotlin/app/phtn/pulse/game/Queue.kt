@@ -134,7 +134,8 @@ object QueueManager {
 
 enum class QueueType(val min: Int, val max: Int, val instantiate: (MutableSet<UUID>) -> Game) {
     SPLEEF(2, 16, ::Spleef),
-    GUNGAME(2, 16, ::GunGame);
+    GUNGAME(2, 16, ::GunGame),
+    PARKOURRACE(1, 16, ::Parkour);
     companion object {
         fun nameToType(name: String): QueueType? {
             return try {

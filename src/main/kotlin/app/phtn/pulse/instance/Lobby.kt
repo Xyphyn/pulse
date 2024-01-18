@@ -6,6 +6,7 @@ import app.phtn.pulse.game.QueueManager
 import app.phtn.pulse.game.QueueType
 import app.phtn.pulse.npc.NPC
 import app.phtn.pulse.util.gradient
+import app.phtn.pulse.uuidToPlayer
 import net.hollowcube.polar.PolarLoader
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -47,21 +48,30 @@ object Lobby {
             val player = it.entity as? Player ?: return@addListener
 
             player.setGameMode(GameMode.ADVENTURE)
+            player.isGlowing = false
+            player.isInvisible = false
             player.inventory.clear()
         }
 
         val spleef = NPC(instance, Pos(0.5, 2.0, -4.5, 0.0f, 0.0f))
-            .withSkin(PlayerSkin.fromUsername("OnlyFlare"))
+            .withSkin(PlayerSkin.fromUsername("kevin6191015"))
             .withName(gradient("Spleef", NamedTextColor.AQUA, NamedTextColor.BLUE).decorate(TextDecoration.BOLD))
             .withCallback {
                 QueueManager.addPlayer(QueueType.SPLEEF, it)
             }
 
-        val gungame = NPC(instance, Pos(-2.5, 2.0, -4.5, 0.0f, 0.0f))
+        val gungame = NPC(instance, Pos(-1.5, 2.0, -4.5, -25.0f, 0.0f))
             .withSkin(PlayerSkin.fromUsername("AG10gamer"))
             .withName(gradient("Gun Game", NamedTextColor.YELLOW, NamedTextColor.GOLD).decorate(TextDecoration.BOLD))
             .withCallback {
                 QueueManager.addPlayer(QueueType.GUNGAME, it)
+            }
+
+        val parkour = NPC(instance, Pos(2.5, 2.0, -4.5, 25.0f, 0.0f))
+            .withSkin(PlayerSkin.fromUsername("Ilovejamaled"))
+            .withName(gradient("Parkour Race", NamedTextColor.GREEN, NamedTextColor.DARK_GREEN).decorate(TextDecoration.BOLD))
+            .withCallback {
+                QueueManager.addPlayer(QueueType.PARKOURRACE, it)
             }
 
         MinecraftServer.getSchedulerManager().buildTask {
@@ -111,7 +121,7 @@ object Lobby {
         ))
         sidebar.updateLineContent("8", Component.textOfChildren(
             Component.text("ᴘɪɴɢ        ").color(Color.Secondary.color),
-            Component.text("${(Main.connections.getPlayer(uuid)?.latency ?: 50) - 50}").color(NamedTextColor.WHITE)
+            Component.text("${(uuidToPlayer(uuid)?.latency ?: 50) - 50}").color(NamedTextColor.WHITE)
         ))
 
         return sidebar

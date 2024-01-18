@@ -5,7 +5,7 @@ import java.util.UUID
 
 fun uuidsToPlayers(uuids: List<UUID>): List<Player> =
     uuids.mapNotNull {
-        u -> Main.connections.getPlayer(u)
+        u -> Main.connections.getOnlinePlayerByUuid(u)
     }
 
-fun uuidToPlayer(uuid: UUID): Player? = Main.connections.getPlayer(uuid)
+fun uuidToPlayer(uuid: UUID): Player? = Main.connections.getOnlinePlayerByUuid(uuid)

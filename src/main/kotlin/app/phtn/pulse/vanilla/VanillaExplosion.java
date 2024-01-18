@@ -3,7 +3,6 @@ package app.phtn.pulse.vanilla;
 import dev.emortal.rayfast.area.Intersection;
 import dev.emortal.rayfast.area.area3d.Area3d;
 import dev.emortal.rayfast.casting.grid.GridCast;
-import dev.emortal.rayfast.util.Intersection3dUtils;
 import dev.emortal.rayfast.vector.Vector3d;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Point;
@@ -12,12 +11,12 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.ItemEntity;
 import net.minestom.server.entity.LivingEntity;
+import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.instance.Explosion;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.batch.AbsoluteBlockBatch;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.utils.time.TimeUnit;
-import app.phtn.pulse.vanilla.DamageTypes;
 
 import java.util.*;
 
@@ -196,7 +195,7 @@ public class VanillaExplosion extends Explosion {
         double damage = Math.floor((impact * impact + impact) * 7 * getStrength() + 1);
 
         if (e instanceof LivingEntity) {
-            ((LivingEntity) e).damage(DamageTypes.EXPLOSION, (float) damage);
+            ((LivingEntity) e).damage(DamageType.EXPLOSION, (float) damage);
         } else {
             if (e instanceof ItemEntity) {
                 e.scheduleRemove(1L, TimeUnit.SERVER_TICK);

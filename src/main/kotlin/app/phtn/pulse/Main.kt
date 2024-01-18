@@ -10,19 +10,14 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.MinecraftServer
-import net.minestom.server.coordinate.Pos
-import net.minestom.server.entity.GameMode
 import net.minestom.server.event.GlobalEventHandler
+import net.minestom.server.event.player.AsyncPlayerConfigurationEvent
 import net.minestom.server.event.player.PlayerChatEvent
-import net.minestom.server.event.player.PlayerDeathEvent
-import net.minestom.server.event.player.PlayerLoginEvent
 import net.minestom.server.event.player.PlayerSpawnEvent
 import net.minestom.server.event.server.ServerListPingEvent
 import net.minestom.server.extras.MojangAuth
-import net.minestom.server.ping.ResponseData
 import net.minestom.server.utils.NamespaceID
 import net.minestom.server.world.DimensionType
-import kotlin.io.path.Path
 
 fun main() {
     val server = MinecraftServer.init()
@@ -31,8 +26,8 @@ fun main() {
     MinecraftServer.getCommandManager().register(QueueCommand())
 
 
-    Main.eventHandler.addListener(PlayerLoginEvent::class.java) { event ->
-        event.setSpawningInstance(Main.lobby)
+    Main.eventHandler.addListener(AsyncPlayerConfigurationEvent::class.java) { event ->
+        event.spawningInstance = Main.lobby
         event.player.respawnPoint = Lobby.spawn
     }
 
@@ -62,7 +57,7 @@ fun main() {
                 .color(NamedTextColor.DARK_GRAY)
                 .decorate(TextDecoration.STRIKETHROUGH),
 
-            Component.text(" 1.20.1").color(NamedTextColor.GRAY).appendNewline(),
+            Component.text(" 1.20.4").color(NamedTextColor.GRAY).appendNewline(),
             Component.empty()
         )
     }

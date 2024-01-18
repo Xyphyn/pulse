@@ -84,6 +84,7 @@ class GunGame(
         players.forEach {
             it.inventory.setItemStack(0, GunProgression.entries.first().weapon.item)
             spawnProtection[it.uuid] = System.currentTimeMillis() + (5 * 1000)
+            it.setTag(Tag.String("gun"), "BBGun")
         }
 
         instance.eventNode().addListener(PlayerUseItemEvent::class.java) { it ->
@@ -93,7 +94,7 @@ class GunGame(
                 player.sendActionBar(
                     Component.text(
                         "You have spawn protection for ${
-                            ((spawnProtection[player.uuid] ?: 0) - System.currentTimeMillis() / 1000).toInt()
+                            (((spawnProtection[player.uuid] ?: 0) - System.currentTimeMillis()) / 1000).toInt()
                         } seconds"
                     )
                 )
@@ -152,7 +153,7 @@ class GunGame(
 
         instance.eventNode().addListener(EntityDamageEvent::class.java) {
             if (it.entity !is Player) return@addListener
-            if (it.entity.health - it.damage <= 0.0f) {
+            if (it.entity.health - it.damage.amount <= 0.0f) {
                 it.isCancelled = true
                 val player = it.entity as Player
                 instance.eventNode().call(
@@ -165,7 +166,7 @@ class GunGame(
         }
 
         instance.eventNode().addListener(PlayerChangeHeldSlotEvent::class.java) {
-            it.isCancelled = true
+            it.player.setHeldItemSlot(0)
         }
 
 
@@ -184,7 +185,9 @@ class GunGame(
 
                 val w = reason.heldWeapon ?: return@addListener
                 val newGun = GunProgression.entries[(w.level + 1).coerceIn(0, GunProgression.entries.size - 1)]
+                reason.setTag(Tag.String("gun"), newGun.name)
                 reason.itemInMainHand = newGun.weapon.item
+                reason.health = 20f
             }
 
             burstTasks[p.uuid]?.cancel()
@@ -243,7 +246,13 @@ class GunGame(
         p.health = 20f
         p.teleport(spawn)
         p.inventory.clear()
-        p.inventory.setItemStack(0, GunProgression.entries.first().weapon.item)
+        val prevGun = GunProgression.entries.find { e -> e.name == p.getTag(Tag.String("gun")) }
+        if (prevGun == null) {
+            p.inventory.setItemStack(0, GunProgression.entries.first().weapon.item)
+        } else {
+            val newGun = GunProgression.entries[(prevGun.ordinal - 1).coerceIn(0, GunProgression.entries.size - 1)]
+            p.inventory.setItemStack(0, newGun.weapon.item)
+        }
     }
 
     fun reload(player: Player, gun: Weapon) {
@@ -432,7 +441,7 @@ sealed class Weapon(val name: String, val level: Int) {
 
                 if ((game.spawnProtection[hitPlayer.uuid] ?: 0) < System.currentTimeMillis()) {
                     instance.sendGroupedPacket(damageEffect(hitPlayer.entityId, player.entityId, player.position))
-                    hitPlayer.damage(DamageType.fromPlayer(player), damage)
+                    hitPlayer.damage(DamageType.PLAYER_ATTACK, damage)
                     game.damagers[hitPlayer.uuid] = player.uuid
                 }
             }
@@ -471,23 +480,7 @@ sealed class Weapon(val name: String, val level: Int) {
 
 }
 
-
-
-
-
-data object BBGun : Weapon("BB Gun", 0) {
-    override val cooldown: Long = 500
-    override val damage: Float = 1.0f
-    override val ammo: Int = 32
-    override val material: Material = Material.WOODEN_HOE
-    override val bullets: Int = 1
-    override val spread: Double = 0.0
-    override val maxDistance: Double = 50.0
-    override val burstAmount: Int = 1
-    override val burstInterval: Int = 1
-}
-
-data object Pistol : Weapon("Pistol", 1) {
+data object Pistol : Weapon("Pistol", 0) {
     override val cooldown: Long = 250
     override val damage: Float = 1.5f
     override val ammo: Int = 10
@@ -499,7 +492,7 @@ data object Pistol : Weapon("Pistol", 1) {
     override val burstInterval: Int = 1
 }
 
-data object Rifle : Weapon("Rifle", 2) {
+data object Rifle : Weapon("Rifle", 1) {
     override val cooldown: Long = 250
     override val damage: Float = 2.5f
     override val ammo: Int = 10
@@ -507,6 +500,18 @@ data object Rifle : Weapon("Rifle", 2) {
     override val bullets: Int = 1
     override val spread: Double = 0.0
     override val maxDistance: Double = 150.0
+    override val burstAmount: Int = 1
+    override val burstInterval: Int = 1
+}
+
+data object Shotgun : Weapon("Shotgun", 2) {
+    override val cooldown: Long = 500
+    override val damage: Float = 1f
+    override val ammo: Int = 200
+    override val material: Material = Material.DIAMOND_HOE
+    override val bullets: Int = 5
+    override val spread: Double = 0.2
+    override val maxDistance: Double = 50.0
     override val burstAmount: Int = 1
     override val burstInterval: Int = 1
 }
@@ -523,22 +528,9 @@ data object SMG : Weapon("SMG", 3) {
     override val burstInterval: Int = 100
 }
 
-data object Shotgun : Weapon("Shotgun", 4) {
-    override val cooldown: Long = 500
-    override val damage: Float = 1f
-    override val ammo: Int = 200
-    override val material: Material = Material.DIAMOND_HOE
-    override val bullets: Int = 5
-    override val spread: Double = 0.2
-    override val maxDistance: Double = 50.0
-    override val burstAmount: Int = 1
-    override val burstInterval: Int = 1
-}
-
 enum class GunProgression(val weapon: Weapon) {
-    BBGUN(BBGun),
     PISTOL(Pistol),
     RIFLE(Rifle),
+    SHOTGUN(Shotgun),
     Smg(SMG),
-    SHOTGUN(Shotgun)
 }
