@@ -55,7 +55,7 @@ import kotlin.math.roundToInt
 
 class GunGame(
     override val players: MutableSet<UUID>,
-) : Game {
+) : Game() {
     override val gameMode = GameMode.ADVENTURE
     override var instance: InstanceContainer = Main.instanceManager.createInstanceContainer(Main.default)
     override val spectators: MutableSet<UUID> = mutableSetOf()
@@ -71,6 +71,8 @@ class GunGame(
     private val reloadTasks: MutableMap<UUID, Task> = ConcurrentHashMap<UUID, Task>()
 
     init {
+        onJoin()
+
         val url = this::class.java.getResource("/beach") ?: throw Error("oops")
         val path = Path.of(url.toURI())
 
@@ -86,6 +88,10 @@ class GunGame(
             spawnProtection[it.uuid] = System.currentTimeMillis() + (5 * 1000)
             it.setTag(Tag.String("gun"), "BBGun")
         }
+    }
+
+    override fun registerEvents() {
+
 
         instance.eventNode().addListener(PlayerUseItemEvent::class.java) { it ->
             val player = it.player
@@ -130,8 +136,8 @@ class GunGame(
                         // poor guy
                         // AUTO RELOADLOELDEOKROIJETROIJEOTLJSRGHRLGMlrejkgdklthirlthyi
 
-//                        val gun = Weapon.registeredMap[player.itemInMainHand.getTag(Weapon.gunTag)] ?: return taskSchedule
-//                        reload(player, gun)
+                        val gun = Weapon.registeredMap[player.itemInMainHand.getTag(Weapon.gunTag)] ?: return taskSchedule
+                        reload(player, gun)
                     }
 
                     burst--;
@@ -141,7 +147,7 @@ class GunGame(
             })
 
             it.player.itemInMainHand = it.player.itemInMainHand.withMeta {
-                g -> g.setTag(lastShotTag, System.currentTimeMillis())
+                    g -> g.setTag(lastShotTag, System.currentTimeMillis())
             }
         }
 
@@ -237,6 +243,8 @@ class GunGame(
                 timer--
             }.repeat(1, TimeUnit.SECOND).schedule()
         }
+
+        super.registerEvents()
     }
 
     private fun respawn(p: Player) {

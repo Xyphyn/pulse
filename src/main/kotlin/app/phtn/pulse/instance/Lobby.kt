@@ -23,6 +23,8 @@ import net.minestom.server.event.player.PlayerMoveEvent
 import net.minestom.server.instance.AnvilLoader
 import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.instance.block.Block
+import net.minestom.server.item.ItemStack
+import net.minestom.server.item.Material
 import net.minestom.server.scoreboard.Sidebar
 import net.minestom.server.utils.time.TimeUnit
 import java.nio.file.Path
@@ -32,7 +34,7 @@ object Lobby {
     val spawn = Pos(0.5, 2.0, 0.5, 180.0f, 0.0f)
     val sidebars: MutableMap<UUID, Sidebar> = mutableMapOf()
 
-    private const val respawnBelow = -5.0
+    private const val respawnBelow = -10.0
 
     fun init(): InstanceContainer {
         MinecraftServer.getDimensionTypeManager().addDimension(Main.default)
@@ -51,6 +53,7 @@ object Lobby {
             player.isGlowing = false
             player.isInvisible = false
             player.inventory.clear()
+            player.inventory.setItemStack(0, ItemStack.of(Material.ELYTRA))
         }
 
         val spleef = NPC(instance, Pos(0.5, 2.0, -4.5, 0.0f, 0.0f))

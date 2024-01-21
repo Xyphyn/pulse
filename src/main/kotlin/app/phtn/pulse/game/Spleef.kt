@@ -44,7 +44,7 @@ import net.minestom.server.timer.Task
 import net.minestom.server.utils.time.TimeUnit
 import java.util.UUID
 
-class Spleef(override val players: MutableSet<UUID>) : Game {
+class Spleef(override val players: MutableSet<UUID>) : Game() {
     override var instance: InstanceContainer = Main.instanceManager.createInstanceContainer(Main.default)
     override val spectators: MutableSet<UUID> = mutableSetOf()
     override val gameMode: GameMode = GameMode.SURVIVAL
@@ -62,17 +62,11 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
             p.inventory.addItemStack(powerup.itemStack)
             p.playSound(Sound.sound(Key.key(ding), Sound.Source.MASTER, 1f, 1f))
         }
-    }.repeat(30, TimeUnit.SECOND).schedule()
+    }.repeat(15 + (players.size * 5L), TimeUnit.SECOND).delay(15L + (players.size * 5L), TimeUnit.SECOND).schedule()
 
     private var destroyLayer = 4
-    private var isFirstRun = true
 
     private val layerDestroyer = instance.scheduler().buildTask {
-        if (isFirstRun) {
-            isFirstRun = false
-            return@buildTask
-        }
-
         instance.sendMessage(
             Component.text("${Emoji.Warning} A layer is being destroyed...")
                 .color(NamedTextColor.GOLD)
@@ -103,12 +97,14 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
             destroyProgress -= 1
         }.repeat(1, TimeUnit.SECOND).schedule()
 
-    }.repeat(90, TimeUnit.SECOND).schedule()
+    }.repeat(90, TimeUnit.SECOND).delay(90, TimeUnit.SECOND).schedule()
 
     private val lava = 10
     private val maxBuildHeight = 30
 
     init {
+        onJoin()
+
         instance.setGenerator {
             g ->
             g.modifier().fillHeight(9, 10, Block.LAVA)
@@ -131,7 +127,9 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
             p ->
             p.setInstance(instance, Pos(0.5, 32.0, 0.5))
         }
+    }
 
+    override fun registerEvents() {
         instance.eventNode().addListener(AddEntityToInstanceEvent::class.java) {
             val player = it.entity as? Player ?: return@addListener
 
@@ -141,7 +139,7 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
         }
 
         instance.eventNode().addListener(PlayerMoveEvent::class.java) {
-            e ->
+                e ->
             run {
                 if (e.newPosition.y <= lava && players.contains(e.player.uuid)) {
                     instance.eventNode().call(PlayerEliminateEvent(e.player))
@@ -157,7 +155,7 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
         }
 
         instance.eventNode().addListener(PlayerEliminateEvent::class.java) {
-            e ->
+                e ->
             run {
                 if (!gameRunning) return@addListener
 
@@ -213,6 +211,8 @@ class Spleef(override val players: MutableSet<UUID>) : Game {
         instance.eventNode().addListener(PlayerBlockPlaceEvent::class.java) {
             if (it.blockPosition.y() > maxBuildHeight) it.isCancelled = true
         }
+
+        super.registerEvents()
     }
 
     override fun endGame() {

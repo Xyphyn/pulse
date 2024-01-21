@@ -1,11 +1,14 @@
 package app.phtn.pulse
 
+import app.phtn.pulse.command.IUseArchBtw
 import app.phtn.pulse.enums.Color
 import app.phtn.pulse.enums.Emoji
 import app.phtn.pulse.game.QueueCommand
 import app.phtn.pulse.game.event.PlayerEliminateEvent
 import app.phtn.pulse.game.spleef
 import app.phtn.pulse.instance.Lobby
+import net.kyori.adventure.resource.ResourcePackInfo
+import net.kyori.adventure.resource.ResourcePackInfoLike
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
@@ -21,10 +24,11 @@ import net.minestom.server.world.DimensionType
 
 fun main() {
     val server = MinecraftServer.init()
+
     MojangAuth.init()
 
     MinecraftServer.getCommandManager().register(QueueCommand())
-
+    MinecraftServer.getCommandManager().register(IUseArchBtw())
 
     Main.eventHandler.addListener(AsyncPlayerConfigurationEvent::class.java) { event ->
         event.spawningInstance = Main.lobby
@@ -74,7 +78,7 @@ object Main {
     val instanceManager = MinecraftServer.getInstanceManager()
     val default: DimensionType = DimensionType.builder(
         NamespaceID.from("pulse:lobby")
-    ).ambientLight(1.0f).build()
+    ).skylightEnabled(true).ambientLight(15.0f).build()
     val eventHandler: GlobalEventHandler = MinecraftServer.getGlobalEventHandler()
     val connections = MinecraftServer.getConnectionManager()
     val lobby = Lobby.init()

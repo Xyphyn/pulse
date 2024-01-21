@@ -11,6 +11,7 @@ import net.minestom.server.event.player.PlayerEntityInteractEvent
 import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.network.packet.server.play.PlayerInfoRemovePacket
 import net.minestom.server.network.packet.server.play.PlayerInfoUpdatePacket
+import net.minestom.server.network.packet.server.play.TeamsPacket
 import java.util.function.Consumer
 
 class NPC(instance: InstanceContainer, position: Pos) : EntityCreature(EntityType.PLAYER) {
@@ -27,6 +28,7 @@ class NPC(instance: InstanceContainer, position: Pos) : EntityCreature(EntityTyp
         val meta = nameTag.getEntityMeta() as TextDisplayMeta
         meta.billboardRenderConstraints = AbstractDisplayMeta.BillboardConstraints.VERTICAL
         meta.translation = Pos(0.0, this.eyeHeight + 0.5, 0.0)
+        team?.let { it.nameTagVisibility = TeamsPacket.NameTagVisibility.NEVER }
 
         if (this.customName != null) {
             meta.text = this.customName!!

@@ -3,7 +3,11 @@ package app.phtn.pulse.game
 import app.phtn.pulse.Main
 import app.phtn.pulse.enums.Emoji
 import app.phtn.pulse.game.event.PlayerEliminateEvent
+import app.phtn.pulse.util.SongManager
 import app.phtn.pulse.uuidsToPlayers
+import dev.emortal.nbstom.NBS
+import net.kyori.adventure.audience.Audience
+import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
@@ -22,14 +26,17 @@ import net.minestom.server.potion.PotionEffect
 import net.minestom.server.scoreboard.Team
 import net.minestom.server.scoreboard.TeamBuilder
 import net.minestom.server.scoreboard.TeamManager
+import net.minestom.server.sound.SoundEvent
 import net.minestom.server.tag.Tag
 import net.minestom.server.utils.time.TimeUnit
 import java.util.*
 import kotlin.collections.ArrayDeque
+import kotlin.math.floor
+import kotlin.math.round
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
-class Parkour(override val players: MutableSet<UUID>) : Game {
+class Parkour(override val players: MutableSet<UUID>) : Game() {
     companion object {
         private val tm = MinecraftServer.getTeamManager()
         val team: Team by lazy {
@@ -50,7 +57,8 @@ class Parkour(override val players: MutableSet<UUID>) : Game {
         val lastPosX = Tag.Double("lastPosX")
         val lastPosY = Tag.Double("lastPosY")
         val lastPosZ = Tag.Double("lastPosZ")
-        val killBelow = -35.0
+        val spawn = Pos(0.0, 164.0, 0.0)
+        val killBelow = (spawn.y - 20).roundToInt()
 
         val parkourBlocks: List<Block> = listOf(
             Block.GRASS_BLOCK,
@@ -71,11 +79,10 @@ class Parkour(override val players: MutableSet<UUID>) : Game {
     override var instance: InstanceContainer = Main.instanceManager.createInstanceContainer(Main.default)
     override val gameMode: GameMode = GameMode.ADVENTURE
 
-    private val spawn = Pos(0.0, 0.0, 0.0)
 
     private val playerSet: MutableSet<Player> = uuidsToPlayers(players.toList()).toMutableSet()
 
-    val leadingPlayer: Player?
+    private val leadingPlayer: Player?
         get() {
             if (playerSet.isEmpty()) return null
             return playerSet.maxBy { player -> player.position.z }
@@ -85,21 +92,30 @@ class Parkour(override val players: MutableSet<UUID>) : Game {
     private var targetY: Double = 0.0
 
     private val numBlocks = 20
+    private val stopId = UUID.randomUUID()
 
     init {
+        registerEvents()
+
+        onJoin()
+
+        instance.setGenerator {
+            it.modifier().fillHeight(killBelow - 2, killBelow - 1, Block.LAVA)
+        }
+
         blocks.addLast(spawn.add(0.0, -1.0, 2.0))
 
         // batches wont work for some reason
         for (x in -2..2) {
             for (z in -2..2) {
-                instance.setBlock(x, -1, z, Block.DEEPSLATE_BRICKS)
+                instance.setBlock(x, (spawn.y - 1.0).toInt(), z, Block.DEEPSLATE_BRICKS)
             }
         }
 
         instance.scheduler().buildTask {
             for (x in -2..2) {
                 for (z in -2..2) {
-                    instance.setBlock(x, -1, z, Block.AIR)
+                    instance.setBlock(x, (spawn.y - 1.0).toInt(), z, Block.AIR)
                 }
             }
         }.delay(10, TimeUnit.SECOND).schedule()
@@ -117,6 +133,14 @@ class Parkour(override val players: MutableSet<UUID>) : Game {
             player.setInstance(instance, spawn.add(0.5, 0.0, 0.5))
         }
 
+        NBS.play(SongManager.badApple, this, instance.scheduler(), stopId)
+
+        for (block in 0..numBlocks) {
+            generateNextBlock(false)
+        }
+    }
+
+    override fun registerEvents() {
         instance.eventNode().addListener(PlayerEliminateEvent::class.java) {
             instance.sendMessage(
                 Component.textOfChildren(
@@ -157,22 +181,28 @@ class Parkour(override val players: MutableSet<UUID>) : Game {
 
         instance.eventNode().addListener(PlayerMoveEvent::class.java) {
             if (!playerSet.contains(it.player)) return@addListener
-            if (it.player.position.y < killBelow) {
+            if (it.player.position.y <= killBelow) {
                 instance.eventNode().call(PlayerEliminateEvent(it.player))
             }
+            it.player.setTag(scoreTag, floor(it.player.position.z).toInt())
             if (leadingPlayer?.uuid != it.player.uuid) return@addListener
 
             if (leadingPlayer != null) {
                 playerSet.forEach {
                         p ->
                     p.sendActionBar(
-                        leadingPlayer!!.name
-                            .color(NamedTextColor.AQUA)
-                            .decorate(TextDecoration.BOLD)
-                            .append(
-                                Component.text(" is the leader")
-                                    .decoration(TextDecoration.BOLD, false)
-                            )
+                        Component.textOfChildren(
+                            leadingPlayer!!.name
+                                .color(NamedTextColor.AQUA)
+                                .decorate(TextDecoration.BOLD)
+                                .append(
+                                    Component.text(" is the leader")
+                                        .decoration(TextDecoration.BOLD, false)
+                                ),
+                            Component.text(" | ").color(NamedTextColor.DARK_GRAY),
+                            Component.text(p.getTag(scoreTag)).color(NamedTextColor.GREEN)
+                                .decorate(TextDecoration.BOLD)
+                        )
                     )
                 }
             }
@@ -180,9 +210,9 @@ class Parkour(override val players: MutableSet<UUID>) : Game {
             val pos = it.player.position
 
             val playerBlock = Pos(
-                (pos.x - 0.5).roundToInt().toDouble(),
-                pos.y - 1,
-                (pos.z - 0.5).roundToInt().toDouble(),
+                round(pos.x - 0.5),
+                round(pos.y - 1),
+                round(pos.z - 0.5),
             )
 
             val index = blocks.indexOf(playerBlock)
@@ -191,14 +221,18 @@ class Parkour(override val players: MutableSet<UUID>) : Game {
 
 
             if (index < 10) return@addListener
+
+
+//            it.player.playSound(
+//                Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_BASS, Sound.Source.BLOCK, 1f, ((score % 15f) / 10f) + 0.5f)
+//            )
+
             for (block in 0..index - 10) {
                 generateNextBlock()
             }
         }
 
-        for (block in 0..numBlocks) {
-            generateNextBlock(false)
-        }
+        super.registerEvents()
     }
 
     private fun generateNextBlock(delete: Boolean = true) {
@@ -211,7 +245,7 @@ class Parkour(override val players: MutableSet<UUID>) : Game {
 
         if (lastPos.y == spawn.y) {
             targetY = 0.0
-        } else if (lastPos.y < spawn.y - 30 || lastPos.y > spawn.y + 30) {
+        } else if (lastPos.y < spawn.y - 10 || lastPos.y > spawn.y + 10) {
             targetY = spawn.y
         }
 
@@ -245,6 +279,7 @@ class Parkour(override val players: MutableSet<UUID>) : Game {
             it.isInvisible = false
             it.isGlowing = false
         }
+        NBS.stop(stopId)
 
         super.endGame()
     }

@@ -1,0 +1,10 @@
+{
+  "pulse.song.fight": {
+    "sounds": [
+      {
+        "name": "song/fight"
+      }
+    ],
+    "subtitle": "Song plays"
+  }
+}
