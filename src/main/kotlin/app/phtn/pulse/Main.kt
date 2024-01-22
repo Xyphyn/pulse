@@ -1,14 +1,13 @@
 package app.phtn.pulse
 
 import app.phtn.pulse.command.IUseArchBtw
-import app.phtn.pulse.enums.Color
-import app.phtn.pulse.enums.Emoji
+import app.phtn.pulse.common.Main
+import app.phtn.pulse.common.enums.Color
+import app.phtn.pulse.common.enums.Emoji
 import app.phtn.pulse.game.QueueCommand
 import app.phtn.pulse.game.event.PlayerEliminateEvent
 import app.phtn.pulse.game.spleef
-import app.phtn.pulse.instance.Lobby
-import net.kyori.adventure.resource.ResourcePackInfo
-import net.kyori.adventure.resource.ResourcePackInfoLike
+import app.phtn.pulse.lobby.Lobby
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
@@ -16,6 +15,7 @@ import net.minestom.server.MinecraftServer
 import net.minestom.server.event.GlobalEventHandler
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent
 import net.minestom.server.event.player.PlayerChatEvent
+import net.minestom.server.event.player.PlayerRespawnEvent
 import net.minestom.server.event.player.PlayerSpawnEvent
 import net.minestom.server.event.server.ServerListPingEvent
 import net.minestom.server.extras.MojangAuth
@@ -30,16 +30,20 @@ fun main() {
     MinecraftServer.getCommandManager().register(QueueCommand())
     MinecraftServer.getCommandManager().register(IUseArchBtw())
 
-    Main.eventHandler.addListener(AsyncPlayerConfigurationEvent::class.java) { event ->
-        event.spawningInstance = Main.lobby
+    MinecraftServer.getDimensionTypeManager().addDimension(Main.default)
+
+    val handler = MinecraftServer.getGlobalEventHandler()
+
+    handler.addListener(AsyncPlayerConfigurationEvent::class.java) { event ->
+        event.spawningInstance = Lobby.instance
         event.player.respawnPoint = Lobby.spawn
     }
 
-    Main.eventHandler.addListener(PlayerEliminateEvent::class.java) { event ->
+    handler.addListener(PlayerEliminateEvent::class.java) { event ->
         event.instance.sendMessage(Component.text("${Emoji.Skull} ${event.player.name}").color(NamedTextColor.RED))
     }
 
-    Main.eventHandler.addListener(PlayerChatEvent::class.java) { event ->
+    handler.addListener(PlayerChatEvent::class.java) { event ->
         event.setChatFormat {
             e ->
             Component.textOfChildren(
@@ -50,11 +54,15 @@ fun main() {
         }
     }
 
-    Main.eventHandler.addListener(PlayerSpawnEvent::class.java) {
+    handler.addListener(PlayerSpawnEvent::class.java) {
         if (it.isFirstSpawn) Lobby.sidebars[it.player.uuid] = Lobby.newSidebar(it.player)
     }
 
-    Main.eventHandler.addListener(ServerListPingEvent::class.java) {
+    handler.addListener(PlayerRespawnEvent::class.java) {
+        it.player.setInstance(Lobby.instance, Lobby.spawn)
+    }
+
+    handler.addListener(ServerListPingEvent::class.java) {
         it.responseData.description = Component.textOfChildren(
             Component.text("ᴘᴜʟsᴇ ").color(Color.Brand.color),
             Component.text("                                                   ")
@@ -67,19 +75,4 @@ fun main() {
     }
 
     server.start("0.0.0.0", 25565)
-}
-
-fun registerDimensions() {
-    MinecraftServer.getDimensionTypeManager().addDimension(Main.default)
-    MinecraftServer.getDimensionTypeManager().addDimension(spleef)
-}
-
-object Main {
-    val instanceManager = MinecraftServer.getInstanceManager()
-    val default: DimensionType = DimensionType.builder(
-        NamespaceID.from("pulse:lobby")
-    ).skylightEnabled(true).ambientLight(15.0f).build()
-    val eventHandler: GlobalEventHandler = MinecraftServer.getGlobalEventHandler()
-    val connections = MinecraftServer.getConnectionManager()
-    val lobby = Lobby.init()
 }
